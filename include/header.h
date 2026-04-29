@@ -1,4 +1,15 @@
-#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <signal.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <net/ethernet.h>
+#include <net/if_arp.h>
+#include <netinet/if_ether.h>
+#include <netpacket/packet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
