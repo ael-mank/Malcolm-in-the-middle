@@ -26,64 +26,56 @@ int verify_ip_adress(const char *str) // str is ip address src or targ
     return 0;
 }
 
+
 int verify_mac_adress(const char *mac_addr)
 {
     int idx;
-    int err;
     char hexa[]  = "0123456789abcdef";
 
     idx = 0;
-    err = 0;
     if (ft_strlen(mac_addr) != 17)
-        err = 1;
+       return 1;
     while (idx < 17)
     {
         if ((idx + 1) % 3 == 0 && idx + 1 != '\0')
         {
             if (mac_addr[idx] != ':')
-                err = 1;
+                return 1;
         }
         else
         {
             char c = ft_tolower(mac_addr[idx]);
-            int j = 0;
+            int j = -1;
             int found = 0;
-
-            while (hexa[j])
+            while (hexa[++j])
             {
                 if (c == hexa[j])
                 {
                     found = 1;
                     break;
                 }
-                j++;
             }
             if (!found)
-                err = 1;
+                return 1;
         }
         idx++;
     }
-    return err;
+    return 0;
 }
 
 int parse_args(int argc, char **argv)
 {
     if (argc != 5)
-    {
-        printf("Usage: \n./ft_malcom <src ip> <src mac address> <target ip> <target mac address>\n");
-        return 1;
-    }
-    else if (verify_ip_adress(argv[1]) == 1 || verify_ip_adress(argv[3]) == 1)
-    {
-        printf("Invalid IP address format \n");
-        return 1;
-    }
-    else if (verify_mac_adress(argv[2]) == 1 || verify_mac_adress(argv[4]) == 1)
-    {
-        printf("Invalid MAC address format \n");
-        return 1;
-    }
-    printf("looks good\n");
+       return (printf("Usage: \n./ft_malcom <src ip> <src mac address> <target ip> <target mac address>\n"), 1);
+    else if (verify_ip_adress(argv[1]) == 1)
+        return (printf("ft_malcolm: unknown host or invalid IP address: (%s)", argv[1]), 1);
+    else if (verify_ip_adress(argv[3]) == 1)
+        return (printf("ft_malcolm: unknown host or invalid IP address: %s", argv[3]), 1);
+    else if (verify_mac_adress(argv[2]) == 1)
+        return (printf("ft_malcolm: invalid mac address: (%s)", argv[2]), 1);
+    else if (verify_mac_adress(argv[4]) == 1)
+        return (printf("ft_malcolm: invalid mac address: (%s)", argv[4]), 1);
+    printf("looks good");
     return 0;
 }
 
