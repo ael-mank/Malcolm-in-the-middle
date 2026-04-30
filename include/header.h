@@ -14,20 +14,20 @@
 #include <ifaddrs.h>
 #include <net/if.h>
 
-typedef struct mac {
+typedef struct s_mac {
     uint8_t bytes[6];
-} mac;
+} t_mac;
 
-typedef struct arp_frame {
+typedef struct s_arp_frame {
     struct ethhdr   ether;
     struct arphdr   arp;
     uint8_t         sender_mac[6];
     uint8_t         sender_ip[4];
     uint8_t         target_mac[6];
     uint8_t         target_ip[4];
-}   arp_frame;
+}   t_arp_frame;
 
-typedef struct data {
+typedef struct s_data {
     char            iface[IFNAMSIZ];
     int             ifaceIdx;
     int             sockfd;
@@ -35,4 +35,4 @@ typedef struct data {
     t_mac           tgt_mac;
     uint8_t         src_ip[4];
     uint8_t         tgt_ip[4];
-} data;
+} t_data;
