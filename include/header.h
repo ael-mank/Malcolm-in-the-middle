@@ -25,7 +25,7 @@ typedef struct s_arp_frame {
     uint8_t         sender_ip[4];
     uint8_t         target_mac[6];
     uint8_t         target_ip[4];
-}   t_arp_frame;
+} __attribute__((packed)) t_arp_frame;
 
 typedef struct s_data {
     char            iface[IFNAMSIZ];
